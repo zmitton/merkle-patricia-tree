@@ -54,7 +54,7 @@ function commit (cb) {
         cb()
       }
     } else {
-      throw new Error('trying to commit when not checkpointed')
+      cb()
     }
   })
 }
