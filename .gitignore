@@ -13,3 +13,7 @@ secure.js
 scratchReadStream.js
 trieNode.js
 util.js
+checkpointTrie.js
+db.js
+scratch.js
+util/

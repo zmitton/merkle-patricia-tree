@@ -49,6 +49,35 @@ module.exports = class Trie {
     this.root = root
   }
 
+  static fromProof(proofNodes, cb){
+    let proofTrie = new Trie()
+    let opStack = proofNodes.map((nodeValue) => {
+      return {type: 'put', key: ethUtil.keccak(nodeValue), value: ethUtil.toBuffer(nodeValue)}
+    })
+    if(opStack[0]){ proofTrie.root = opStack[0].key}
+
+    proofTrie.db.batch(opStack, (e) => {
+      if(e) throw Error('Invalid proof nodes given')
+      cb(e, proofTrie)
+    })
+  }
+
+  static prove (trie, key, cb) {
+    trie.findPath(key, function (err, node, remaining, stack) {
+      if (err) return cb(err)
+      let p = stack.map((stackElem)=>{ return stackElem.serialize() })
+      cb(null, p)
+    })
+  }
+
+  static verifyProof (rootHash, key, proofNodes, cb) {
+    Trie.fromProof(proofNodes, (error,proofTrie)=>{
+      proofTrie.get(key, (e,r)=>{
+        return cb(e,r)
+      })
+    })
+  }
+
   /**
    * Gets a value given a `key`
    * @method get
@@ -132,18 +161,17 @@ module.exports = class Trie {
   // retrieves a node from dbs by hash
   _lookupNode (node, cb) {
     if (TrieNode.isRawNode(node)) {
-      cb(new TrieNode(node))
+      cb(null, new TrieNode(node))
     } else {
       this.db.get(node, (err, value) => {
-        if (err) {
-          throw err
-        }
 
         if (value) {
           value = new TrieNode(rlp.decode(value))
+        }else{
+          err = "Missing node in DB" || err
         }
 
-        cb(value)
+        cb(err, value)
       })
     }
   }
@@ -375,7 +403,7 @@ module.exports = class Trie {
       return onDone()
     }
 
-    this._lookupNode(root, node => {
+    this._lookupNode(root, (e, node) => {
       processNode(root, node, null, err => {
         if (err) {
           return onDone(err)
@@ -421,7 +449,7 @@ module.exports = class Trie {
             const childKey = key.concat(keyExtension)
             const priority = childKey.length
             taskExecutor.execute(priority, taskCallback => {
-              self._lookupNode(childRef, childNode => {
+              self._lookupNode(childRef, (e, childNode) => {
                 taskCallback()
                 processNode(childRef, childNode, childKey, cb)
               })
@@ -434,7 +462,8 @@ module.exports = class Trie {
           childKey.push(childIndex)
           const priority = childKey.length
           taskExecutor.execute(priority, taskCallback => {
-            self._lookupNode(childRef, childNode => {
+            self._lookupNode(childRef, (e, childNode) => {
+              if(e){ return cb(e, null)}
               taskCallback()
               processNode(childRef, childNode, childKey, cb)
             })
@@ -585,7 +614,7 @@ module.exports = class Trie {
         const branchNodeKey = branchNodes[0][0]
 
         // look up node
-        this._lookupNode(branchNode, foundNode => {
+        this._lookupNode(branchNode, (e, foundNode) => {
           key = processBranchNode(key, branchNodeKey, foundNode, parentNode, stack, opStack)
           this._saveStack(key, stack, opStack, cb)
         })
@@ -694,7 +723,7 @@ module.exports = class Trie {
    */
   checkRoot (root, cb) {
     root = ethUtil.toBuffer(root)
-    this._lookupNode(root, value => {
+    this._lookupNode(root, (e, value) => {
       cb(null, !!value)
     })
   }

@@ -1,10 +1,10 @@
 const async = require('async')
 const WriteStream = require('level-ws')
 const BaseTrie = require('./baseTrie')
-const proof = require('./proof.js')
 const ScratchReadStream = require('./scratchReadStream')
 const ScratchDB = require('./scratch')
 const { callTogether } = require('./util/async')
+
 
 module.exports = class CheckpointTrie extends BaseTrie {
   constructor (...args) {
@@ -15,14 +15,6 @@ module.exports = class CheckpointTrie extends BaseTrie {
     this._scratch = null
     // Roots of trie at the moment of checkpoint
     this._checkpoints = []
-  }
-
-  static prove (...args) {
-    return proof.prove(...args)
-  }
-
-  static verifyProof (...args) {
-    return proof.verifyProof(...args)
   }
 
   /**
