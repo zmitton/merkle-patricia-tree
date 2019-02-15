@@ -49,15 +49,17 @@ module.exports = class Trie {
     this.root = root
   }
 
-  static fromProof(proofNodes, cb){
-    let proofTrie = new Trie()
+  static fromProof(proofNodes, cb, proofTrie){
     let opStack = proofNodes.map((nodeValue) => {
       return {type: 'put', key: ethUtil.keccak(nodeValue), value: ethUtil.toBuffer(nodeValue)}
     })
-    if(opStack[0]){ proofTrie.root = opStack[0].key}
+
+    if(!proofTrie){
+      proofTrie = new Trie()
+      if(opStack[0]){ proofTrie.root = opStack[0].key}
+    }
 
     proofTrie.db.batch(opStack, (e) => {
-      if(e) throw Error('Invalid proof nodes given')
       cb(e, proofTrie)
     })
   }
@@ -72,6 +74,7 @@ module.exports = class Trie {
 
   static verifyProof (rootHash, key, proofNodes, cb) {
     Trie.fromProof(proofNodes, (error,proofTrie)=>{
+      if(error)cb('Invalid proof nodes given', null)
       proofTrie.get(key, (e,r)=>{
         return cb(e,r)
       })
