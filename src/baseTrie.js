@@ -407,6 +407,7 @@ module.exports = class Trie {
     }
 
     this._lookupNode(root, (e, node) => {
+      if(e){ return onDone(e, node) }
       processNode(root, node, null, err => {
         if (err) {
           return onDone(err)
@@ -453,6 +454,7 @@ module.exports = class Trie {
             const priority = childKey.length
             taskExecutor.execute(priority, taskCallback => {
               self._lookupNode(childRef, (e, childNode) => {
+                if(e){ return cb(e, node) }
                 taskCallback()
                 processNode(childRef, childNode, childKey, cb)
               })
@@ -618,6 +620,7 @@ module.exports = class Trie {
 
         // look up node
         this._lookupNode(branchNode, (e, foundNode) => {
+          if(e){ return cb(e, foundNode) }
           key = processBranchNode(key, branchNodeKey, foundNode, parentNode, stack, opStack)
           this._saveStack(key, stack, opStack, cb)
         })
