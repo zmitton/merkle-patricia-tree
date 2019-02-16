@@ -425,6 +425,10 @@ function () {
       }
 
       this._lookupNode(root, function (e, node) {
+        if (e) {
+          return onDone(e, node);
+        }
+
         processNode(root, node, null, function (err) {
           if (err) {
             return onDone(err);
@@ -470,6 +474,10 @@ function () {
               var priority = childKey.length;
               taskExecutor.execute(priority, function (taskCallback) {
                 self._lookupNode(childRef, function (e, childNode) {
+                  if (e) {
+                    return cb(e, node);
+                  }
+
                   taskCallback();
                   processNode(childRef, childNode, childKey, cb);
                 });
@@ -644,6 +652,10 @@ function () {
           var branchNodeKey = branchNodes[0][0]; // look up node
 
           this._lookupNode(branchNode, function (e, foundNode) {
+            if (e) {
+              return cb(e, foundNode);
+            }
+
             key = processBranchNode(key, branchNodeKey, foundNode, parentNode, stack, opStack);
 
             _this3._saveStack(key, stack, opStack, cb);
@@ -773,8 +785,7 @@ function () {
     }
   }], [{
     key: "fromProof",
-    value: function fromProof(proofNodes, cb) {
-      var proofTrie = new Trie();
+    value: function fromProof(proofNodes, cb, proofTrie) {
       var opStack = proofNodes.map(function (nodeValue) {
         return {
           type: 'put',
@@ -783,12 +794,15 @@ function () {
         };
       });
 
-      if (opStack[0]) {
-        proofTrie.root = opStack[0].key;
+      if (!proofTrie) {
+        proofTrie = new Trie();
+
+        if (opStack[0]) {
+          proofTrie.root = opStack[0].key;
+        }
       }
 
       proofTrie.db.batch(opStack, function (e) {
-        if (e) throw Error('Invalid proof nodes given');
         cb(e, proofTrie);
       });
     }
@@ -807,6 +821,7 @@ function () {
     key: "verifyProof",
     value: function verifyProof(rootHash, key, proofNodes, cb) {
       Trie.fromProof(proofNodes, function (error, proofTrie) {
+        if (error) cb('Invalid proof nodes given', null);
         proofTrie.get(key, function (e, r) {
           return cb(e, r);
         });
